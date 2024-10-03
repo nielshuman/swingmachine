@@ -1,31 +1,26 @@
-# For more information, please refer to https://aka.ms/vscode-docker-python
-FROM python:3.11-slim-bullseye
+FROM python:2.7.18-buster
 
-# Keeps Python from generating .pyc files in the container
-ENV PYTHONDONTWRITEBYTECODE=1
+# Install FFMPEG
+RUN apt-get update && apt-get install -y ffmpeg lame soundstretch shntool && rm -rf /var/lib/apt/lists/*
 
-# Turns off buffering for easier container logging
-ENV PYTHONUNBUFFERED=1
+# Install remix dependencies
+RUN python -m pip install numpy mutagen pyyaml
+RUN ln -s $(which ffmpeg) /usr/local/bin/en-ffmpeg
 
+# Install remix
+RUN git clone https://github.com/echonest/remix.git \
+    && cd remix \
+    && git clone https://github.com/echonest/pyechonest pyechonest 
+RUN cd remix && python setup.py install \
+    && cd ..
+    # && rm -rf remix/
 
-RUN apt update && apt install -y git gcc 
-# build-essential python3-dev libgeos-dev
-
-# RUN python3 -m pip install --upgrade pip setuptools wheel
-
-RUN pip install cython numpy mido scipy
-RUN pip install madmom
-# Install pip requirements
 COPY requirements.txt .
 RUN python -m pip install -r requirements.txt
-
 WORKDIR /app
 COPY . /app
 
-# Creates a non-root user with an explicit UID and adds permission to access the /app folder
-# For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
-RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
-USER appuser
-
 # During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
-CMD ["python", "main.py"]
+# CMD ["python", "main.py"]
+WORKDIR /
+CMD ["python", "remix/examples/swinger/swinger.py"]
