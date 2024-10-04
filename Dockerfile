@@ -1,26 +1,21 @@
-FROM python:2.7.18-buster
+# For more information, please refer to https://aka.ms/vscode-docker-python
+FROM python:3-slim
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Install FFMPEG
-RUN apt-get update && apt-get install -y ffmpeg lame soundstretch shntool && rm -rf /var/lib/apt/lists/*
+# RUN apt-get update && apt-get install -y libsndfile1
 
-# Install remix dependencies
-RUN python -m pip install numpy mutagen pyyaml
-RUN ln -s $(which ffmpeg) /usr/local/bin/en-ffmpeg
-
-# Install remix
-RUN git clone https://github.com/echonest/remix.git \
-    && cd remix \
-    && git clone https://github.com/echonest/pyechonest pyechonest 
-RUN cd remix && python setup.py install \
-    && cd ..
-    # && rm -rf remix/
-
-COPY requirements.txt .
+# Install pip requirements
+COPY app/requirements.txt .
 RUN python -m pip install -r requirements.txt
+
 WORKDIR /app
-COPY . /app
+COPY app /app
+
+# # Creates a non-root user with an explicit UID and adds permission to access the /app folder
+# # For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
+# RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
+# USER appuser
 
 # During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
 CMD ["python", "main.py"]
-# WORKDIR /
-# CMD ["python", "remix/examples/swinger/swinger.py"]
