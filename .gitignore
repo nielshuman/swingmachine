@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-volume
+audio
 
 # C extensions
 *.so
