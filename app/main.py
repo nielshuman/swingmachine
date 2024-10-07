@@ -6,8 +6,16 @@ import argparse
 import librosa
 import soundfile as sf
 from gooey import Gooey, GooeyParser
+import sys
 
-@Gooey
+if len(sys.argv)>=2:
+    if not '--ignore-gooey' in sys.argv:
+        sys.argv.append('--ignore-gooey')
+
+@Gooey(
+    program_name="SWING MACHINE",
+    program_description="Niels Huisman, 2024",
+)
 def main():
     # parser = argparse.ArgumentParser(description="Swing Machine: Add swing to your audio files.")
     # parser.add_argument('--infile', type=str, required=True, help='Input audio file')
@@ -15,11 +23,12 @@ def main():
     # parser.add_argument('--produce-click-track', action='store_true', help='Produce a click track as well')
     # args = parser.parse_args()
 
-    parser = GooeyParser(description="Swing Machine: Add swing to your audio files.")
-    parser.add_argument('infile', help='Input audio file', widget='FileChooser')
-    parser.add_argument('outfile', help='Output audio file', widget='FileSaver')
-    parser.add_argument('--produce-click-track', action='store_true', help='Produce a click track as well')
-    parser.add_argument('--click-track-file', help='Click track file')
+    parser = GooeyParser(prog="swing", description="SWING MACHINE.\nNiels Huisman, 2024")
+    parser.add_argument('-i', '--input-file', metavar="Input", help='Input audio file', widget='FileChooser', required=True)
+    parser.add_argument('-o', '--output-file', metavar="Output", help='Output audio file. (optional)\nDefaults to <inputfile>_swing.wav', widget='FileSaver')
+    debug = parser.add_argument_group('Debug zooi')
+
+    debug.add_argument('-c', '--produce-click-track', metavar="Produce clicktrack", action='store_true', help='Produce a click track as well. Useful for debugging.')
     args = parser.parse_args()
 
     PRODUCE_CLICK_TRACK_AS_WELL = args.produce_click_track
