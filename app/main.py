@@ -47,12 +47,12 @@ def main():
         OUTFILE = INFILE.replace(".wav", "_swing.wav").replace(".mp3", "_swing.mp3") 
     ENCODE_MP3 = OUTFILE.endswith(".mp3")
     WAV_OUTFILE = OUTFILE.replace(".mp3", ".wav")
-    if OUTFILE == INFILE:
-        raise SystemExit("Input and output file can't be the same")
     if not INFILE.endswith(".wav") and not INFILE.endswith(".mp3"):
         raise SystemExit("Only wav and mp3 files are supported as input")
     if not OUTFILE.endswith(".wav") and not OUTFILE.endswith(".mp3"):
         raise SystemExit("Output must end in either .wav or .mp3")
+    if OUTFILE == INFILE:
+        raise SystemExit("Input and output file can't be the same")
     stagelog = Stagelog(total_stages=(4 + PRODUCE_CLICKTRACK + ENCODE_MP3))
         
     
@@ -62,7 +62,9 @@ def main():
 
     stagelog.next("Detecting beats...")
     tempo, beats = librosa.beat.beat_track(y=y, sr=sr, units='samples')
-
+    if args.halftime:
+        # Delete every other beat
+        beats = beats[::2]
     if PRODUCE_CLICKTRACK:
         stagelog.next("Producing click track...")
         clicks = librosa.samples_to_time(beats, sr=sr)
