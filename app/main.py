@@ -26,10 +26,6 @@ class Stagelog:
     program_description="Niels Huisman, 2024", 
     image_dir="icons",
     default_size=(750, 610),
-    #Example
-    # @Gooey(progress_regex=r"^progress: (?P<current>\d+)/(?P<total>\d+)$",
-    #    progress_expr="current / total * 100")
-    # match "[<current>/<total>]" in print statements to update progress bar
     progress_regex=r"^\[(?P<current>\d+)/(?P<total>\d+)\]$",
     progress_expr="current / total * 100",
     hide_progress_msg=True,
