@@ -1,17 +1,22 @@
-# PRODUCE_CLICK_TRACK_AS_WELL = False
-# INFILE = 'volume/mardy.wav'
-# OUTFILE = 'volume/mardy_swang.wav'
-
 import argparse
 import librosa
 import soundfile as sf
 from gooey import Gooey, GooeyParser
 import sys
+import pydub
 
 if len(sys.argv)>=2:
     if not '--ignore-gooey' in sys.argv:
         sys.argv.append('--ignore-gooey')
 
+class Stagelog:
+    def __init__(self, total_stages):
+        self.total_stages = total_stages
+        self.current_stage = 0
+    def next(self, name):
+        self.current_stage += 1
+        print(f"[{self.current_stage}/{self.total_stages}]")
+        print(name)
 @Gooey(
     program_name="SWING MACHINE",
     program_description="Niels Huisman, 2024", 
@@ -24,47 +29,62 @@ if len(sys.argv)>=2:
     progress_regex=r"^\[(?P<current>\d+)/(?P<total>\d+)\]$",
     progress_expr="current / total * 100",
     hide_progress_msg=True,
+    show_failure_modal=False,
 )
 def main():
-    # parser = argparse.ArgumentParser(description="Swing Machine: Add swing to your audio files.")
-    # parser.add_argument('--infile', type=str, required=True, help='Input audio file')
-    # parser.add_argument('--outfile', type=str, required=True, help='Output audio file')
-    # parser.add_argument('--produce-click-track', action='store_true', help='Produce a click track as well')
-    # args = parser.parse_args()
-
     parser = GooeyParser(prog="swing", description="SWING MACHINE.\nNiels Huisman, 2024")
-    parser.add_argument('-i', '--input-file', metavar="Input", help='Input audio file', widget='FileChooser', required=True)
-    parser.add_argument('-o', '--output-file', metavar="Output", help='Output audio file. (optional)\nDefaults to <inputfile>_swing.wav', widget='FileSaver')
+    parser.add_argument('-i', '--input-file', metavar="Input", help='Input audio file.\nEither an MP3 file or a WAV file.', widget='FileChooser', required=True)
+    parser.add_argument('-o', '--output-file', metavar="Output", help='Output audio file. (optional)\nDefaults to <inputfile>_swing.mp3', widget='FileSaver')
     parser.add_argument('--halftime', metavar="Halftime", help='Use halftime swing.', action='store_true')
     debug = parser.add_argument_group('Debug zooi')
-
-    debug.add_argument('-c', '--produce-click-track', metavar="Produce clicktrack", action='store_true', help='Produce a click track as well. Useful for debugging.')
+    debug.add_argument('--produce-click-track', metavar="Produce clicktrack", action='store_true', help='Produce a click track as well. Useful for debugging or checking why the result is weird.')
     args = parser.parse_args()
 
-    PRODUCE_CLICK_TRACK_AS_WELL = args.produce_click_track
     INFILE = args.input_file
-    OUTFILE = args.output_file if args.output_file else INFILE.replace(".wav", "_swing.wav")
-    if not INFILE.endswith(".wav"):
-        print("Input file must be a .wav file")
-        sys.exit(1)
+    OUTFILE = args.output_file
+    PRODUCE_CLICKTRACK = args.produce_click_track
+    if not OUTFILE:
+        OUTFILE = INFILE.replace(".wav", "_swing.wav").replace(".mp3", "_swing.mp3") 
+    ENCODE_MP3 = OUTFILE.endswith(".mp3")
+
+    if OUTFILE == INFILE:
+        raise SystemExit("Input and output file can't be the same")
+    if not INFILE.endswith(".wav") and not INFILE.endswith(".mp3"):
+        raise SystemExit("Only wav and mp3 files are supported as input")
+    if not OUTFILE.endswith(".wav") and not OUTFILE.endswith(".mp3"):
+        raise SystemExit("Output must end in either .wav or .mp3")
+    stagelog = Stagelog(total_stages=(4 + PRODUCE_CLICKTRACK + ENCODE_MP3))
+        
     
     print("Welcome to SWING MACHINE")
-    
-    print("[0/3]")
     print("Loading file...")
     y, sr = librosa.load(INFILE, sr=None)
-    print("[1/3]")
-    print("Detecting beats...")
+
+    stagelog.next("Detecting beats...")
     tempo, beats = librosa.beat.beat_track(y=y, sr=sr, units='samples')
 
-    if PRODUCE_CLICK_TRACK_AS_WELL:
-        print("Producing click track...")
-        click = librosa.clicks(frames=beats, sr=sr, length=len(y))
+    if PRODUCE_CLICKTRACK:
+        stagelog.next("Producing click track...")
+        clicks = librosa.samples_to_time(beats, sr=sr)
+        click = librosa.clicks(times=clicks, sr=sr, length=len(y))
         y_click = y + click
-        sf.write(OUTFILE.replace(".wav", "_click.wav"), y_click, sr)
+        filename = INFILE.replace(".wav", "_click.wav").replace(".mp3", "_click.wav")
+        sf.write(filename, y_click, sr)
 
-    print("[2/3]")
-    print("Swinging....")
+    stagelog.next("Swinging...")
+    y_new = swing(y, sr, beats)
+    
+    stagelog.next("Saving file...")
+    sf.write(OUTFILE, y_new, sr)
+
+    if ENCODE_MP3:
+        stagelog.next("Converting to mp3...")
+        pydub.AudioSegment.from_wav(OUTFILE).export(OUTFILE.replace(".wav", ".mp3"), format="mp3")
+
+    print("[4/4]")
+    print("Done! Saved to:", OUTFILE)
+
+def swing(y, sr, beats):
     y_new = []
     for i in range(len(beats)-1):
         first_half = y[beats[i]:int((beats[i]+beats[i+1])/2)]
@@ -75,11 +95,7 @@ def main():
 
         y_new.extend(first_half)
         y_new.extend(second_half)
-    
-    print("[3/3]")
-    print("Saving file...")
-    # Save the new audio file
-    sf.write(OUTFILE, y_new, sr)
+    return y_new
 
 if __name__ == "__main__":
     main()
