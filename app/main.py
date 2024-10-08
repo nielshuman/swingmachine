@@ -1,9 +1,12 @@
+# SWING MACHINE
+# Niels Huisman, 2024
+
 import argparse
 import librosa
 import soundfile as sf
-from gooey import Gooey, GooeyParser
-import sys
+import sys, os
 import pydub
+from gooey import Gooey, GooeyParser
 
 if len(sys.argv)>=2:
     if not '--ignore-gooey' in sys.argv:
@@ -13,10 +16,11 @@ class Stagelog:
     def __init__(self, total_stages):
         self.total_stages = total_stages
         self.current_stage = 0
-    def next(self, name):
+    def next(self, text=None):
         self.current_stage += 1
         print(f"[{self.current_stage}/{self.total_stages}]")
-        print(name)
+        if text:
+            print(text)
 @Gooey(
     program_name="SWING MACHINE",
     program_description="Niels Huisman, 2024", 
@@ -46,7 +50,7 @@ def main():
     if not OUTFILE:
         OUTFILE = INFILE.replace(".wav", "_swing.wav").replace(".mp3", "_swing.mp3") 
     ENCODE_MP3 = OUTFILE.endswith(".mp3")
-
+    WAV_OUTFILE = OUTFILE.replace(".mp3", ".wav")
     if OUTFILE == INFILE:
         raise SystemExit("Input and output file can't be the same")
     if not INFILE.endswith(".wav") and not INFILE.endswith(".mp3"):
@@ -74,12 +78,14 @@ def main():
     stagelog.next("Swinging...")
     y_new = swing(y, sr, beats)
     
+    
     stagelog.next("Saving file...")
-    sf.write(OUTFILE, y_new, sr)
+    sf.write(WAV_OUTFILE, y_new, sr)
 
     if ENCODE_MP3:
-        stagelog.next("Converting to mp3...")
-        pydub.AudioSegment.from_wav(OUTFILE).export(OUTFILE.replace(".wav", ".mp3"), format="mp3")
+        stagelog.next()
+        pydub.AudioSegment.from_wav(WAV_OUTFILE).export(OUTFILE, format="mp3")
+        os.remove(WAV_OUTFILE)
 
     print("[4/4]")
     print("Done! Saved to:", OUTFILE)
