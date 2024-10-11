@@ -32,9 +32,11 @@ class Stagelog:
     show_failure_modal=False,
 )
 def main():
+    save_wildcard = "MP3 files (*.mp3)|*.mp3|WAV files (*.wav)|*.wav|Audio files (*.wav;*.mp3)|*.wav;*.mp3"
+    open_wildcard = "Audio files (*.wav;*.mp3)|*.wav;*.mp3"
     parser = GooeyParser(prog="swing", description="SWING MACHINE.\nNiels Huisman, 2024")
-    parser.add_argument('-i', '--input-file', metavar="Input", help='Input audio file.\nEither an MP3 file or a WAV file.', widget='FileChooser', required=True)
-    parser.add_argument('-o', '--output-file', metavar="Output", help='Output audio file. (optional)\nDefaults to <inputfile>_swing.mp3', widget='FileSaver')
+    parser.add_argument('-i', '--input-file', metavar="Input", help='Input audio file.\nEither an MP3 file or a WAV file.', widget='FileChooser', required=True, gooey_options={"wildcard": open_wildcard})
+    parser.add_argument('-o', '--output-file', metavar="Output", help='Output audio file. (optional)\nDefaults to <inputfile>_swing.mp3', widget='FileSaver', gooey_options={"wildcard": save_wildcard})
     parser.add_argument('--halftime', metavar="Halftime", help='Use halftime swing.', action='store_true')
     debug = parser.add_argument_group('Debug zooi')
     debug.add_argument('--produce-click-track', metavar="Produce clicktrack", action='store_true', help='Produce a click track as well. Useful for debugging or checking why the result is weird.')
