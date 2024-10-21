@@ -7,6 +7,9 @@ import soundfile as sf
 import sys, os
 import pydub
 from gooey import Gooey, GooeyParser
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from multiprocessing import Process
 
 if len(sys.argv)>=2:
     if not '--ignore-gooey' in sys.argv:
@@ -64,10 +67,26 @@ def main():
     print("Welcome to SWING MACHINE")
     print("Loading file...")
     y, sr = librosa.load(INFILE, sr=None)
-
+    GRAPH_RESOLUTION_FACTOR = 200
+    y_graph = y[::GRAPH_RESOLUTION_FACTOR]
+    sr_graph = sr//GRAPH_RESOLUTION_FACTOR
+    # show timestamps on x-axis for every 30 seconds
+    xticks = range(0, len(y_graph), sr_graph*30)
+    xticklabels = [f"{i//sr_graph//60}:{(i//sr_graph)%60:02}" for i in xticks]
+    fig, ax = plt.subplots()
+    def update(frame):
+        ax.clear()
+        ax.set_xlim(-10*sr_graph, len(y_graph)+10*sr_graph)
+        ax.set_ylim(-1, 1)
+        plt.xticks(xticks, xticklabels)
+        ax.plot(y_graph[:frame])
+    anim = FuncAnimation(fig, update, frames=range(0, len(y_graph), sr_graph*2), repeat=False, interval=0)
+    p = Process(target=plt.show)
+    p.start()
     stagelog.next("Detecting beats...")
     tempo, beats = librosa.beat.beat_track(y=y, sr=sr, units='samples')
-    
+    plt.close()
+    p.terminate()
     # preprocessing
     if args.remove_first_beat:
         beats = beats[1:]
@@ -91,7 +110,7 @@ def main():
         sf.write(filename, y_click, sr)
 
     stagelog.next("Swinging...")
-    y_new = deswing(y, sr, beats)
+    y_new = swing(y, sr, beats)
     
     
     stagelog.next("Saving file...")
@@ -104,7 +123,6 @@ def main():
 
     print("[4/4]")
     print("Done! Saved to:", OUTFILE)
-
 def swing(y, sr, beats):
     y_new = []
     for i in range(len(beats)-1):
