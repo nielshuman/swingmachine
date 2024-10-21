@@ -21,11 +21,12 @@ class Stagelog:
         print(f"[{self.current_stage}/{self.total_stages}]")
         if text:
             print(text)
+
 @Gooey(
     program_name="SWING MACHINE",
     program_description="Niels Huisman, 2024", 
     image_dir="icons",
-    default_size=(750, 610),
+    default_size=(800, 700),
     progress_regex=r"^\[(?P<current>\d+)/(?P<total>\d+)\]$",
     progress_expr="current / total * 100",
     hide_progress_msg=True,
