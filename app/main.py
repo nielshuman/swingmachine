@@ -38,6 +38,8 @@ def main():
     parser.add_argument('-i', '--input-file', metavar="Input", help='Input audio file.\nEither an MP3 file or a WAV file.', widget='FileChooser', required=True, gooey_options={"wildcard": open_wildcard})
     parser.add_argument('-o', '--output-file', metavar="Output (optional)", help='Output audio file.\nDefaults to <inputfile>_swing.mp3', widget='FileSaver', gooey_options={"wildcard": save_wildcard, "default_file": "swing.mp3"})
     parser.add_argument('--halftime', metavar="Halftime", help='Use halftime swing.', action='store_true')
+    parser.add_argument('--dubbletime', metavar="Dubbletime", help='Use dubbletime swing.', action='store_true')
+    parser.add_argument('--remove-first-beat', metavar="Remove first beat", help='Remove the first beat. Useful when using halftime and first beat is off.', action='store_true')
     debug = parser.add_argument_group('Debug zooi')
     debug.add_argument('--produce-click-track', metavar="Produce clicktrack", action='store_true', help='Produce a click track as well. Useful for debugging or checking why the result is weird.')
     args = parser.parse_args()
@@ -64,11 +66,23 @@ def main():
 
     stagelog.next("Detecting beats...")
     tempo, beats = librosa.beat.beat_track(y=y, sr=sr, units='samples')
+    
+    # preprocessing
+    if args.remove_first_beat:
+        beats = beats[1:]
     if args.halftime:
-        # Delete every other beat
         beats = beats[::2]
+    if args.dubbletime:
+        # insert a beat between every beat
+        new_beats = []
+        for i in range(len(beats)-1):
+            new_beats.append(beats[i])
+            new_beats.append(int((beats[i]+beats[i+1])/2))
+        new_beats.append(beats[-1])
+        beats = new_beats
+    
     if PRODUCE_CLICKTRACK:
-        stagelog.next("Producing click track...")
+        stagelog.next("Producing click track (preprocessed)...")
         clicks = librosa.samples_to_time(beats, sr=sr)
         click = librosa.clicks(times=clicks, sr=sr, length=len(y))
         y_click = y + click
@@ -76,7 +90,7 @@ def main():
         sf.write(filename, y_click, sr)
 
     stagelog.next("Swinging...")
-    y_new = swing(y, sr, beats)
+    y_new = deswing(y, sr, beats)
     
     
     stagelog.next("Saving file...")
@@ -101,6 +115,19 @@ def swing(y, sr, beats):
 
         y_new.extend(first_half)
         y_new.extend(second_half)
+    return y_new
+
+def deswing(y, sr, beats):
+    y_new = []
+    for i in range(len(beats)-1):
+        first_two_thirds = y[beats[i]:int((beats[i]+beats[i+1])/2)]
+        last_third = y[int((beats[i]+beats[i+1])/2):beats[i+1]]
+
+        first_two_thirds = librosa.effects.time_stretch(first_two_thirds, rate=(3/2))
+        last_third = librosa.effects.time_stretch(last_third, rate=(3/4))
+
+        y_new.extend(first_two_thirds)
+        y_new.extend(last_third)
     return y_new
 
 if __name__ == "__main__":
